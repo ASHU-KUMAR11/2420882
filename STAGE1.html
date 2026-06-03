@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Campus Notifications – Priority Inbox</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    /* ─── CSS VARIABLES ─────────────────────────────────── */
+    :root {
+      --bg:        #0b0f1a;
+      --surface:   #111827;
+      --card:      #161d2e;
+      --border:    #1e2d45;
+      --accent:    #3b82f6;
+      --accent2:   #06b6d4;
+      --success:   #10b981;
+      --warn:      #f59e0b;
+      --danger:    #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --tag-bg:    #1e3a5f;
+      --pill-h:    36px;
+      --radius:    12px;
+      --mono: 'DM Mono', monospace;
+      --head: 'Syne', sans-serif;
+      --body: 'DM Sans', sans-serif;
+    }
+
+    /* ─── RESET ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── GRID NOISE BACKGROUND ─────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LAYOUT ─────────────────────────────────────────── */
+    .shell { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ─── HEADER ─────────────────────────────────────────── */
+    header {
+      padding: 40px 0 32px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+    .brand { display: flex; flex-direction: column; gap: 4px; }
+    .brand-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .brand-title {
+      font-family: var(--head);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, #e2e8f0 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    /* ─── CONTROLS ───────────────────────────────────────── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .ctrl-label {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .ctrl-group { display: flex; align-items: center; gap: 8px; }
+
+    select, input[type="number"] {
+      height: var(--pill-h);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 0 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      outline: none;
+      appearance: none;
+    }
+    select:focus, input[type="number"]:focus { border-color: var(--accent); }
+    input[type="number"] { width: 72px; text-align: center; }
+
+    .btn {
+      height: var(--pill-h);
+      padding: 0 18px;
+      border-radius: 8px;
+      border: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+
+    /* ─── STATS BAR ──────────────────────────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--accent); }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .stat-value {
+      font-family: var(--head);
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-value.blue  { color: var(--accent); }
+    .stat-value.green { color: var(--success); }
+    .stat-value.amber { color: var(--warn); }
+    .stat-value.red   { color: var(--danger); }
+
+    /* ─── SECTION HEADER ─────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: var(--head);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+    .badge {
+      height: 22px;
+      padding: 0 10px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 99px;
+      font-family: var(--mono);
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* ─── NOTIFICATION CARD ──────────────────────────────── */
+    .notif-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .notif-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      animation: slideIn 0.35s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+    .notif-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent-color, var(--accent));
+      border-radius: 3px 0 0 3px;
+    }
+    .notif-card:hover { border-color: var(--accent); transform: translateX(2px); box-shadow: 0 4px 24px rgba(59,130,246,0.08); }
+    .notif-card.read { opacity: 0.5; }
+    .notif-card.priority-high  { --accent-color: var(--danger); }
+    .notif-card.priority-med   { --accent-color: var(--warn); }
+    .notif-card.priority-low   { --accent-color: var(--success); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* rank circle */
+    .rank {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1.5px solid var(--accent-color, var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-color, var(--accent));
+      flex-shrink: 0;
+    }
+
+    .notif-body { min-width: 0; }
+    .notif-title {
+      font-family: var(--body);
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .notif-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 99px;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid currentColor;
+      opacity: 0.85;
+    }
+    .pill-placement { color: #c084fc; }
+    .pill-result    { color: var(--accent2); }
+    .pill-event     { color: var(--success); }
+    .pill-general   { color: var(--muted); }
+
+    .notif-time {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .notif-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .score-chip {
+      height: 24px;
+      padding: 0 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .score-chip span { color: var(--accent); font-weight: 500; }
+    .mark-read-btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s;
+    }
+    .mark-read-btn:hover { color: var(--success); }
+
+    /* ─── LOADING / EMPTY STATE ──────────────────────────── */
+    .state-box {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 60px 20px;
+      gap: 16px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+    .state-icon { font-size: 40px; }
+    .state-msg {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ─── SPINNER ────────────────────────────────────────── */
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── AUTO-REFRESH BAR ───────────────────────────────── */
+    .refresh-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .refresh-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      width: 100%;
+      transform-origin: left;
+    }
+    @keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+    /* ─── TOAST ──────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      background: var(--card);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ─── SECTION TWO-COL ────────────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 760px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    /* ─── ALGO PANEL ─────────────────────────────────────── */
+    .algo-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: sticky;
+      top: 20px;
+    }
+    .algo-title {
+      font-family: var(--head);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .algo-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .algo-row:last-child { border-bottom: none; }
+    .algo-row label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .algo-row .val  { font-family: var(--mono); font-size: 12px; color: var(--text); }
+    .weight-slider { width: 100px; accent-color: var(--accent); }
+
+    .formula-box {
+      margin-top: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent2);
+      line-height: 1.8;
+    }
+
+    .all-section { margin-top: 36px; }
+
+    /* ─── SCROLLABLE LIST ────────────────────────────────── */
+    .scroll-list {
+      max-height: 600px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 4px;
+    }
+    .scroll-list::-webkit-scrollbar { width: 4px; }
+    .scroll-list::-webkit-scrollbar-track { background: var(--surface); border-radius: 4px; }
+    .scroll-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <span class="brand-tag">Campus Hiring — Stage 1</span>
+      <h1 class="brand-title">Priority Inbox</h1>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-ghost" id="refreshBtn">↻ Refresh Now</button>
+      <button class="btn btn-danger" id="clearBtn">⊘ Clear Read</button>
+      <button class="btn btn-primary" id="simBtn">＋ Simulate New</button>
+    </div>
+  </header>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <span class="ctrl-label">TOP — N</span>
+    <div class="ctrl-group">
+      <input type="number" id="topN" value="10" min="1" max="50"/>
+      <button class="btn btn-ghost" onclick="applyN()">Apply</button>
+    </div>
+    <span class="ctrl-label" style="margin-left:16px">SORT</span>
+    <select id="sortMode">
+      <option value="score">By Priority Score</option>
+      <option value="time">By Recency</option>
+      <option value="type">By Type</option>
+    </select>
+    <span class="ctrl-label" style="margin-left:16px">AUTO-REFRESH</span>
+    <select id="autoRefresh">
+      <option value="0">Off</option>
+      <option value="15">15 s</option>
+      <option value="30" selected>30 s</option>
+      <option value="60">60 s</option>
+    </select>
+  </div>
+
+  <!-- REFRESH PROGRESS BAR -->
+  <div class="refresh-bar"><div class="refresh-bar-inner" id="refreshBar"></div></div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-label">Total Fetched</span>
+      <span class="stat-value blue" id="st-total">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Unread</span>
+      <span class="stat-value green" id="st-unread">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Priority Shown</span>
+      <span class="stat-value amber" id="st-shown">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Placement</span>
+      <span class="stat-value red" id="st-placement">—</span>
+    </div>
+  </div>
+
+  <!-- TWO COLUMN -->
+  <div class="two-col">
+
+    <!-- LEFT: PRIORITY LIST -->
+    <div>
+      <div class="section-header">
+        <span class="section-title">Priority Inbox</span>
+        <div class="section-line"></div>
+        <span class="badge" id="priorityCount">0</span>
+      </div>
+      <div id="priorityList" class="notif-list">
+        <div class="state-box"><div class="spinner"></div><p class="state-msg">Fetching notifications…</p></div>
+      </div>
+
+      <!-- ALL NOTIFICATIONS -->
+      <div class="all-section">
+        <div class="section-header">
+          <span class="section-title">All Notifications</span>
+          <div class="section-line"></div>
+          <span class="badge" id="allCount">0</span>
+        </div>
+        <div id="allList" class="scroll-list notif-list"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: ALGORITHM PANEL -->
+    <div class="algo-panel">
+      <div class="algo-title">Priority Engine</div>
+
+      <div class="algo-row">
+        <label>Placement Weight</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" class="weight-slider" id="wPlacement" min="0" max="10" value="5"/>
+          <span class="val" id="wPlacementVal">5</span>
+        </div>
+      </div>
+      <div class="algo-row">
+        <label>Result Weight</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" class="weight-slider" id="wResult" min="0" max="10" value="3"/>
+          <span class="val" id="wResultVal">3</span>
+        </div>
+      </div>
+      <div class="algo-row">
+        <label>Event Weight</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" class="weight-slider" id="wEvent" min="0" max="10" value="2"/>
+          <span class="val" id="wEventVal">2</span>
+        </div>
+      </div>
+      <div class="algo-row">
+        <label>Recency Decay</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="range" class="weight-slider" id="wDecay" min="1" max="48" value="12"/>
+          <span class="val" id="wDecayVal">12h</span>
+        </div>
+      </div>
+      <div class="algo-row">
+        <label>Heap Size (Max)</label>
+        <span class="val">Min-Heap (size N)</span>
+      </div>
+      <div class="algo-row">
+        <label>Complexity</label>
+        <span class="val">O(M · log N)</span>
+      </div>
+
+      <div class="formula-box">
+        score = typeWeight<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× recencyFactor<br/><br/>
+        recencyFactor =<br/>
+        &nbsp;&nbsp;1 / (1 + Δh / decayH)<br/><br/>
+        typeWeight:<br/>
+        &nbsp;&nbsp;placement → W<sub>p</sub><br/>
+        &nbsp;&nbsp;result &nbsp;&nbsp;&nbsp;→ W<sub>r</sub><br/>
+        &nbsp;&nbsp;event &nbsp;&nbsp;&nbsp;&nbsp;→ W<sub>e</sub><br/>
+        &nbsp;&nbsp;general &nbsp;&nbsp;→ 1
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;justify-content:center" onclick="render()">
+        ↺ Recompute
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  PRIORITY INBOX — Campus Hiring Stage 1
+//  Algorithm: Min-Heap of size N to efficiently maintain
+//  the top-N notifications as new ones arrive.
+//  Score = typeWeight × recencyFactor
+// ════════════════════════════════════════════════════════
+
+/* ── STATE ─────────────────────────────────────────────── */
+let allNotifications = [];   // raw from API + simulated
+let readIds = new Set();     // IDs marked as read
+let refreshTimer = null;
+let barAnim = null;
+
+/* ── WEIGHT SLIDERS ─────────────────────────────────────── */
+function w(id) { return parseInt(document.getElementById(id).value); }
+
+function getWeights() {
+  return {
+    placement : w('wPlacement'),
+    result    : w('wResult'),
+    event     : w('wEvent'),
+    decay     : w('wDecay')
+  };
+}
+
+// Live-update labels
+['wPlacement','wResult','wEvent','wDecay'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const el = document.getElementById(id+'Val');
+    el.textContent = id === 'wDecay'
+      ? document.getElementById(id).value + 'h'
+      : document.getElementById(id).value;
+    render();
+  });
+});
+
+/* ── PRIORITY SCORE ─────────────────────────────────────── */
+function priorityScore(notif) {
+  const weights = getWeights();
+  const typeMap = {
+    placement : weights.placement,
+    result    : weights.result,
+    event     : weights.event,
+    general   : 1
+  };
+  const type  = (notif.type || 'general').toLowerCase();
+  const tWeight = typeMap[type] ?? 1;
+
+  const now   = Date.now();
+  const ts    = notif._ts || now;
+  const deltaH = (now - ts) / 3_600_000;    // hours since notification
+  const recency = 1 / (1 + deltaH / weights.decay);
+
+  return tWeight * recency;
+}
+
+/* ── MIN-HEAP IMPLEMENTATION ────────────────────────────── */
+// We maintain a min-heap of size N.
+// For each new notification, if heap.size < N → push.
+// Else if score > heap.min → replace min and sift-up.
+// Result: O(M · log N) for M total notifications.
+
+class MinHeap {
+  constructor() { this.data = []; }
+
+  push(item) {
+    this.data.push(item);
+    this._bubbleUp(this.data.length - 1);
+  }
+
+  pop() {
+    const top = this.data[0];
+    const last = this.data.pop();
+    if (this.data.length) { this.data[0] = last; this._siftDown(0); }
+    return top;
+  }
+
+  peek() { return this.data[0]; }
+  get size() { return this.data.length; }
+
+  _bubbleUp(i) {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (this.data[p]._score <= this.data[i]._score) break;
+      [this.data[p], this.data[i]] = [this.data[i], this.data[p]];
+      i = p;
+    }
+  }
+
+  _siftDown(i) {
+    const n = this.data.length;
+    while (true) {
+      let smallest = i;
+      const l = 2*i+1, r = 2*i+2;
+      if (l < n && this.data[l]._score < this.data[smallest]._score) smallest = l;
+      if (r < n && this.data[r]._score < this.data[smallest]._score) smallest = r;
+      if (smallest === i) break;
+      [this.data[i], this.data[smallest]] = [this.data[smallest], this.data[i]];
+      i = smallest;
+    }
+  }
+}
+
+/* ── GET TOP-N VIA HEAP ─────────────────────────────────── */
+function getTopN(notifications, n) {
+  const heap = new MinHeap();
+  for (const notif of notifications) {
+    if (readIds.has(notif.id)) continue;      // skip read
+    const scored = { ...notif, _score: priorityScore(notif) };
+    if (heap.size < n) {
+      heap.push(scored);
+    } else if (heap.peek() && scored._score > heap.peek()._score) {
+      heap.pop();
+      heap.push(scored);
+    }
+  }
+  // Extract and sort descending (highest priority first)
+  const result = [];
+  while (heap.size) result.push(heap.pop());
+  result.sort((a, b) => b._score - a._score);
+  return result;
+}
+
+/* ── API CALL ───────────────────────────────────────────── */
+async function fetchNotifications() {
+  try {
+    // Using the Campus Hiring Notification API endpoint
+    const res = await fetch(
+      'https://campus-hiring-notification-service.onrender.com/notifications',
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    // Normalise: handle array or { notifications: [...] }
+    const raw = Array.isArray(data) ? data : (data.notifications || data.data || []);
+    return raw.map(n => ({
+      ...n,
+      _ts: n.timestamp ? new Date(n.timestamp).getTime() : Date.now()
+    }));
+  } catch (e) {
+    console.warn('API unavailable, using mock data:', e.message);
+    return mockData();
+  }
+}
+
+/* ── MOCK DATA (fallback) ───────────────────────────────── */
+function mockData() {
+  const types = ['placement','placement','result','event','general'];
+  const msgs  = [
+    'Shortlist for TCS Campus Drive 2026 released',
+    'Amazon SDE Interview – Round 2 scheduled',
+    'HackerRank Result: You scored 92/100',
+    'Infosys InfyTQ Certification exam next week',
+    'Campus placement portal maintenance tonight',
+    'Google on-campus PPT – 15 Jun 2026',
+    'Wipro NLTH Results announced',
+    'Cognizant GenC written test tomorrow',
+    'Microsoft resume shortlist published',
+    'Deloitte Virtual Drive 2026 – register now',
+    'AMCAT score report available',
+    'Placement training session – DSA @ 4PM',
+    'Mock interview slots open – CSE 2026 batch',
+    'GATE 2026 admit cards released',
+    'LinkedIn Learning free access till June 10'
+  ];
+  return msgs.map((msg, i) => ({
+    id      : `mock-${i}`,
+    message : msg,
+    type    : types[i % types.length],
+    timestamp: new Date(Date.now() - i * 3_600_000 * (Math.random() * 6 + 0.5)).toISOString(),
+    _ts     : Date.now() - i * 3_600_000 * (Math.random() * 6 + 0.5)
+  }));
+}
+
+/* ── SIMULATE NEW NOTIFICATION ──────────────────────────── */
+let simCount = 0;
+document.getElementById('simBtn').onclick = () => {
+  simCount++;
+  const types = ['placement','result','event','general'];
+  const msgs  = [
+    'URGENT: TechCorp shortlist updated',
+    'Your test result is now available',
+    'Pre-placement talk tomorrow at 10 AM',
+    `System notice #${simCount}`
+  ];
+  const t = types[simCount % 4];
+  const n = {
+    id      : `sim-${simCount}-${Date.now()}`,
+    message : msgs[simCount % 4],
+    type    : t,
+    timestamp: new Date().toISOString(),
+    _ts     : Date.now()
+  };
+  allNotifications.unshift(n);
+  render();
+  toast(`New notification added: "${n.message.slice(0,36)}…"`);
+};
+
+/* ── CLEAR READ ─────────────────────────────────────────── */
+document.getElementById('clearBtn').onclick = () => {
+  readIds.forEach(id => {
+    allNotifications = allNotifications.filter(n => n.id !== id);
+  });
+  readIds.clear();
+  render();
+  toast('Cleared all read notifications');
+};
+
+/* ── SORT ALL LIST ──────────────────────────────────────── */
+function sortedAll() {
+  const mode = document.getElementById('sortMode').value;
+  const copy = [...allNotifications];
+  if (mode === 'score') copy.sort((a,b) => priorityScore(b) - priorityScore(a));
+  else if (mode === 'time') copy.sort((a,b) => (b._ts||0) - (a._ts||0));
+  else copy.sort((a,b) => (a.type||'').localeCompare(b.type||''));
+  return copy;
+}
+document.getElementById('sortMode').addEventListener('change', render);
+
+/* ── RENDER ─────────────────────────────────────────────── */
+function render() {
+  const n   = parseInt(document.getElementById('topN').value) || 10;
+  const top = getTopN(allNotifications, n);
+
+  // Stats
+  const unread = allNotifications.filter(n => !readIds.has(n.id)).length;
+  const placements = allNotifications.filter(n => (n.type||'').toLowerCase() === 'placement').length;
+  document.getElementById('st-total').textContent    = allNotifications.length;
+  document.getElementById('st-unread').textContent   = unread;
+  document.getElementById('st-shown').textContent    = top.length;
+  document.getElementById('st-placement').textContent = placements;
+  document.getElementById('priorityCount').textContent = top.length;
+  document.getElementById('allCount').textContent    = allNotifications.length;
+
+  renderList('priorityList', top, true);
+  renderList('allList', sortedAll(), false);
+}
+
+function renderList(containerId, items, showRank) {
+  const el = document.getElementById(containerId);
+  if (!items.length) {
+    el.innerHTML = `<div class="state-box">
+      <div class="state-icon">🔔</div>
+      <p class="state-msg">No notifications here yet.</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = items.map((n, i) => cardHTML(n, showRank ? i+1 : null)).join('');
+  // Event listeners for mark-read
+  el.querySelectorAll('.mark-read-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      readIds.has(id) ? readIds.delete(id) : readIds.add(id);
+      render();
+    };
+  });
+}
+
+function cardHTML(n, rank) {
+  const score  = priorityScore(n);
+  const type   = (n.type || 'general').toLowerCase();
+  const isRead = readIds.has(n.id);
+  const time   = n._ts ? timeAgo(n._ts) : '—';
+  const prioClass = type === 'placement' ? 'priority-high'
+                  : type === 'result'    ? 'priority-med'
+                  : type === 'event'     ? 'priority-low' : '';
+  return `
+  <div class="notif-card ${prioClass} ${isRead ? 'read' : ''}">
+    <div class="rank">${rank !== null ? rank : '·'}</div>
+    <div class="notif-body">
+      <div class="notif-title">${escHtml(n.message || n.title || 'Untitled notification')}</div>
+      <div class="notif-meta">
+        <span class="pill pill-${type}">${type}</span>
+        <span class="notif-time">${time}</span>
+      </div>
+    </div>
+    <div class="notif-right">
+      <div class="score-chip">score <span>${score.toFixed(3)}</span></div>
+      <button class="mark-read-btn" data-id="${n.id}">
+        ${isRead ? '↩ unread' : '✓ read'}
+      </button>
+    </div>
+  </div>`;
+}
+
+/* ── UTILS ──────────────────────────────────────────────── */
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function applyN() { render(); toast(`Showing top ${document.getElementById('topN').value} notifications`); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ── AUTO-REFRESH ───────────────────────────────────────── */
+function startAutoRefresh() {
+  const sel   = document.getElementById('autoRefresh');
+  const secs  = parseInt(sel.value);
+  const bar   = document.getElementById('refreshBar');
+
+  clearInterval(refreshTimer);
+  bar.style.animation = 'none';
+
+  if (!secs) return;
+
+  bar.style.animation = `shrink ${secs}s linear infinite`;
+
+  refreshTimer = setInterval(async () => {
+    toast('Auto-refreshing…');
+    const fresh = await fetchNotifications();
+    // Merge: add new ones not already in allNotifications
+    const existingIds = new Set(allNotifications.map(n => n.id));
+    const added = fresh.filter(n => !existingIds.has(n.id));
+    if (added.length) {
+      allNotifications = [...added, ...allNotifications];
+      toast(`↑ ${added.length} new notification(s) received`);
+    }
+    render();
+  }, secs * 1000);
+}
+
+document.getElementById('autoRefresh').addEventListener('change', startAutoRefresh);
+document.getElementById('refreshBtn').onclick = async () => {
+  toast('Refreshing…');
+  const fresh = await fetchNotifications();
+  const existingIds = new Set(allNotifications.map(n => n.id));
+  const added = fresh.filter(n => !existingIds.has(n.id));
+  allNotifications = [...added, ...allNotifications];
+  render();
+  toast(added.length ? `↑ ${added.length} new` : 'Up to date');
+};
+
+/* ── INIT ───────────────────────────────────────────────── */
+(async () => {
+  allNotifications = await fetchNotifications();
+  render();
+  startAutoRefresh();
+})();
+</script>
+</body>
+</html>
